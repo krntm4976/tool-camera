@@ -3,141 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>工具QRカメラ</title>
-
+  <title>工具QRカメラ デバッグ版</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 18px;
-      background: #f1f3f4;
-      font-size: 22px;
-    }
-
-    .card {
-      background: #ffffff;
-      border-radius: 22px;
-      padding: 24px;
-      max-width: 720px;
-      margin: 0 auto;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.16);
-    }
-
-    h1 {
-      font-size: 34px;
-      text-align: center;
-      margin: 0 0 20px 0;
-    }
-
-    .info {
-      background: #f8f9fa;
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 20px;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-
-    button {
-      width: 100%;
-      padding: 22px;
-      font-size: 28px;
-      font-weight: bold;
-      border: none;
-      border-radius: 18px;
-      background: #1a73e8;
-      color: white;
-      margin-top: 16px;
-    }
-
-    .stopBtn {
-      display: none;
-      background: #d93025;
-    }
-
-    #readerBox {
-      display: none;
-      margin-top: 18px;
-      background: #000;
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    #qrVideo {
-      width: 100%;
-      display: block;
-    }
-
-    #qrCanvas {
-      display: none;
-    }
-
-    .msg {
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 16px;
-      white-space: pre-wrap;
-    }
+    body { font-family: sans-serif; margin: 0; padding: 18px; background: #f1f3f4; font-size: 22px; }
+    .card { background: #fff; border-radius: 22px; padding: 24px; max-width: 720px; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,.16); }
+    h1 { font-size: 32px; text-align: center; margin: 0 0 18px; }
+    .info, .debug { background: #f8f9fa; border-radius: 14px; padding: 14px; font-size: 18px; margin: 12px 0; line-height: 1.5; word-break: break-all; white-space: pre-wrap; }
+    button { width: 100%; padding: 20px; font-size: 26px; font-weight: bold; border: 0; border-radius: 18px; background: #1a73e8; color: #fff; margin-top: 14px; }
+    .stopBtn { display: none; background: #d93025; }
+    #readerBox { display: none; margin-top: 18px; background: #000; border-radius: 18px; overflow: hidden; }
+    #qrVideo { width: 100%; display: block; }
+    #qrCanvas { display: none; }
+    .msg { text-align: center; font-size: 20px; font-weight: bold; margin-top: 16px; white-space: pre-wrap; }
   </style>
 </head>
-
 <body>
   <div class="card">
-    <h1>工具QRカメラ</h1>
-
-    <div class="info" id="info">
-      起動準備中です。
-    </div>
-
-    <button onclick="startCamera()">
-      カメラを起動
-    </button>
-
-    <button id="stopBtn" class="stopBtn" onclick="stopCamera()">
-      読み取りを停止
-    </button>
-
-    <div id="readerBox">
-      <video id="qrVideo" playsinline></video>
-    </div>
-
+    <h1>工具QRカメラ デバッグ版</h1>
+    <div class="info" id="info">起動準備中です。</div>
+    <button onclick="startCamera()">カメラを起動</button>
+    <button id="stopBtn" class="stopBtn" onclick="stopCamera()">読み取りを停止</button>
+    <div id="readerBox"><video id="qrVideo" playsinline></video></div>
+    <div id="debug" class="debug">読み取り結果はここに表示されます。</div>
     <div id="msg" class="msg"></div>
   </div>
-
   <canvas id="qrCanvas"></canvas>
 
   <script>
     let appUrl = "";
     let site = "";
     let person = "";
-
     let stream = null;
     let scanning = false;
     let locked = false;
 
     window.addEventListener("load", function() {
       const params = new URLSearchParams(location.search);
-
-      // Apps Script側から渡されたURLを使う。
-      // ここにApps ScriptのURLを固定で書かない。
       appUrl = params.get("app") || "";
       site = params.get("site") || "";
       person = params.get("person") || "";
 
+      document.getElementById("info").innerText =
+        "受信したApps Script URL：\n" + (appUrl || "なし") + "\n\n" +
+        "担当者：" + (person || "未指定") + "\n" +
+        "現場名：" + (site || "未指定");
+
       if (!appUrl) {
-        document.getElementById("info").innerText =
-          "Apps ScriptのURLが渡されていません。\n\n" +
-          "必ず工具検索トップページの「専用カメラでQRを読む」から開いてください。";
+        document.getElementById("msg").innerText =
+          "Apps ScriptのURLが渡されていません。工具検索トップページから開いてください。";
         return;
       }
-
-      document.getElementById("info").innerText =
-        "担当者：" + (person || "未指定") + "\n" +
-        "現場名：" + (site || "未指定") + "\n\n" +
-        "工具のQRコードをカメラに映してください。";
 
       setTimeout(startCamera, 300);
     });
@@ -145,27 +61,16 @@
     async function startCamera() {
       const msg = document.getElementById("msg");
       const video = document.getElementById("qrVideo");
-
-      if (!appUrl) {
-        msg.innerText =
-          "Apps ScriptのURLがありません。\n" +
-          "工具検索トップページから開き直してください。";
-        return;
-      }
-
       msg.innerText = "カメラを起動中です...";
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" }
-          },
+          video: { facingMode: { ideal: "environment" } },
           audio: false
         });
 
         video.srcObject = stream;
         video.setAttribute("playsinline", true);
-
         await video.play();
 
         document.getElementById("readerBox").style.display = "block";
@@ -174,13 +79,9 @@
         scanning = true;
         locked = false;
         msg.innerText = "QRコードを映してください。";
-
         requestAnimationFrame(scanFrame);
-
       } catch (error) {
-        msg.innerText =
-          "カメラを起動できませんでした。\n" +
-          "Chromeで開き、カメラ権限を許可してください。";
+        msg.innerText = "カメラを起動できませんでした。\nChromeで開き、カメラ権限を許可してください。";
       }
     }
 
@@ -194,31 +95,40 @@
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        const code = jsQR(
-          imageData.data,
-          imageData.width,
-          imageData.height
-        );
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
         if (code && code.data) {
           locked = true;
 
-          const itemId = extractItemId(code.data);
+          const raw = code.data;
+          const itemId = extractItemId(raw);
 
-          if (!itemId) {
-            alert("管理番号を読み取れませんでした。");
-            locked = false;
-            requestAnimationFrame(scanFrame);
-            return;
-          }
+          const targetUrl =
+            appUrl +
+            "?id=" + encodeURIComponent(itemId) +
+            "&site=" + encodeURIComponent(site) +
+            "&person=" + encodeURIComponent(person);
+
+          document.getElementById("debug").innerText =
+            "QRの中身：\n" + raw + "\n\n" +
+            "抜き出した管理番号：\n" + itemId + "\n\n" +
+            "移動予定URL：\n" + targetUrl;
+
+          alert(
+            "QRの中身：\n" + raw + "\n\n" +
+            "移動予定URL：\n" + targetUrl
+          );
 
           stopCamera();
-          goToolPage(itemId);
+
+          // 確認のため3秒待ってから移動
+          setTimeout(function() {
+            location.href = targetUrl;
+          }, 3000);
+
           return;
         }
       }
@@ -228,14 +138,11 @@
 
     function stopCamera() {
       scanning = false;
-
       document.getElementById("readerBox").style.display = "none";
       document.getElementById("stopBtn").style.display = "none";
 
       if (stream) {
-        stream.getTracks().forEach(function(track) {
-          track.stop();
-        });
+        stream.getTracks().forEach(function(track) { track.stop(); });
         stream = null;
       }
     }
@@ -247,21 +154,9 @@
         const url = new URL(text);
         const id = url.searchParams.get("id");
         if (id) return id;
-      } catch (e) {
-        // URLでない場合はそのまま管理番号扱い
-      }
+      } catch (e) {}
 
       return String(text).trim();
-    }
-
-    function goToolPage(itemId) {
-      const url =
-        appUrl +
-        "?id=" + encodeURIComponent(itemId) +
-        "&site=" + encodeURIComponent(site) +
-        "&person=" + encodeURIComponent(person);
-
-      location.href = url;
     }
   </script>
 </body>
