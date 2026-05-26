@@ -110,8 +110,6 @@
   <canvas id="qrCanvas"></canvas>
 
   <script>
-    const DEFAULT_APP_URL = "https://script.google.com/macros/s/AKfycbyiuwTyeMe3Mn4R0BXvdHZMtEODiKeYqxHOAeitTGSmxud2jLGdT7sRNSGfse_G8xqewg/exec";
-
     let appUrl = "";
     let site = "";
     let person = "";
@@ -123,9 +121,18 @@
     window.addEventListener("load", function() {
       const params = new URLSearchParams(location.search);
 
-      appUrl = params.get("app") || DEFAULT_APP_URL;
+      // Apps Script側から渡されたURLを使う。
+      // ここにApps ScriptのURLを固定で書かない。
+      appUrl = params.get("app") || "";
       site = params.get("site") || "";
       person = params.get("person") || "";
+
+      if (!appUrl) {
+        document.getElementById("info").innerText =
+          "Apps ScriptのURLが渡されていません。\n\n" +
+          "必ず工具検索トップページの「専用カメラでQRを読む」から開いてください。";
+        return;
+      }
 
       document.getElementById("info").innerText =
         "担当者：" + (person || "未指定") + "\n" +
@@ -138,6 +145,13 @@
     async function startCamera() {
       const msg = document.getElementById("msg");
       const video = document.getElementById("qrVideo");
+
+      if (!appUrl) {
+        msg.innerText =
+          "Apps ScriptのURLがありません。\n" +
+          "工具検索トップページから開き直してください。";
+        return;
+      }
 
       msg.innerText = "カメラを起動中です...";
 
