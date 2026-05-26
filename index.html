@@ -26,45 +26,18 @@
     }
 
     h1 {
-      font-size: 34px;
+      font-size: 40px;
       text-align: center;
-      margin: 0 0 20px 0;
-    }
-
-    .info {
-      background: #f8f9fa;
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 20px;
-      margin-bottom: 16px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    button {
-      width: 100%;
-      padding: 22px;
-      font-size: 28px;
+      margin: 0 0 22px 0;
       font-weight: bold;
-      border: none;
-      border-radius: 18px;
-      background: #1a73e8;
-      color: white;
-      margin-top: 16px;
-    }
-
-    .stopBtn {
-      display: none;
-      background: #d93025;
     }
 
     #readerBox {
-      display: none;
-      margin-top: 18px;
+      display: block;
       background: #000;
       border-radius: 18px;
       overflow: hidden;
+      min-height: 280px;
     }
 
     #qrVideo {
@@ -76,6 +49,18 @@
       display: none;
     }
 
+    .backBtn {
+      width: 100%;
+      padding: 24px;
+      font-size: 30px;
+      font-weight: bold;
+      border: none;
+      border-radius: 18px;
+      background: #5f6368;
+      color: white;
+      margin-top: 24px;
+    }
+
     .msg {
       text-align: center;
       font-size: 20px;
@@ -83,6 +68,7 @@
       margin-top: 16px;
       white-space: pre-wrap;
       word-break: break-word;
+      color: #d93025;
     }
   </style>
 </head>
@@ -91,21 +77,13 @@
   <div class="card">
     <h1>工具QRカメラ</h1>
 
-    <div class="info" id="info">
-      起動準備中です。
-    </div>
-
-    <button onclick="startCamera()">
-      カメラを起動
-    </button>
-
-    <button id="stopBtn" class="stopBtn" onclick="stopCamera()">
-      読み取りを停止
-    </button>
-
     <div id="readerBox">
-      <video id="qrVideo" playsinline></video>
+      <video id="qrVideo" playsinline autoplay muted></video>
     </div>
+
+    <button class="backBtn" onclick="goHome()">
+      戻る
+    </button>
 
     <div id="msg" class="msg"></div>
   </div>
@@ -124,39 +102,24 @@
     window.addEventListener("load", function() {
       const params = new URLSearchParams(location.search);
 
-      // Apps Script側から渡されたURLを使う。
-      // ここにApps ScriptのURLを固定で書かない。
       appUrl = params.get("app") || "";
       site = params.get("site") || "";
       person = params.get("person") || "";
 
       if (!appUrl) {
-        document.getElementById("info").innerText =
-          "Apps ScriptのURLが渡されていません。\n\n" +
-          "必ず工具検索トップページの「専用カメラでQRを読む」から開いてください。";
+        document.getElementById("msg").innerText =
+          "Apps ScriptのURLが渡されていません。\n工具管理トップページから開き直してください。";
         return;
       }
 
-      document.getElementById("info").innerText =
-        "担当者：" + (person || "未指定") + "\n" +
-        "現場名：" + (site || "未指定") + "\n\n" +
-        "工具のQRコードをカメラに映してください。";
-
-      setTimeout(startCamera, 300);
+      startCamera();
     });
 
     async function startCamera() {
       const msg = document.getElementById("msg");
       const video = document.getElementById("qrVideo");
 
-      if (!appUrl) {
-        msg.innerText =
-          "Apps ScriptのURLがありません。\n" +
-          "工具検索トップページから開き直してください。";
-        return;
-      }
-
-      msg.innerText = "カメラを起動中です...";
+      msg.innerText = "";
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -171,19 +134,14 @@
 
         await video.play();
 
-        document.getElementById("readerBox").style.display = "block";
-        document.getElementById("stopBtn").style.display = "block";
-
         scanning = true;
         locked = false;
-        msg.innerText = "QRコードを映してください。";
 
         requestAnimationFrame(scanFrame);
 
       } catch (error) {
         msg.innerText =
-          "カメラを起動できませんでした。\n" +
-          "Chromeで開き、カメラ権限を許可してください。";
+          "カメラを起動できませんでした。\nChromeで開き、カメラ権限を許可してください。";
       }
     }
 
@@ -232,9 +190,6 @@
     function stopCamera() {
       scanning = false;
 
-      document.getElementById("readerBox").style.display = "none";
-      document.getElementById("stopBtn").style.display = "none";
-
       if (stream) {
         stream.getTracks().forEach(function(track) {
           track.stop();
@@ -263,6 +218,24 @@
         "?id=" + encodeURIComponent(itemId) +
         "&site=" + encodeURIComponent(site) +
         "&person=" + encodeURIComponent(person);
+
+      location.href = url;
+    }
+
+    function goHome() {
+      stopCamera();
+
+      if (!appUrl) {
+        history.back();
+        return;
+      }
+
+      const url =
+        appUrl +
+        "?mode=home" +
+        "&person=" + encodeURIComponent(person) +
+        "&site=" + encodeURIComponent(site) +
+        "&t=" + new Date().getTime();
 
       location.href = url;
     }
