@@ -1,11 +1,8 @@
-# index.html（GitHub Pages 側 全体コード）
-
-```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR読み取り</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -60,13 +57,12 @@
       padding: 24px;
     }
 
-    /* ローディング */
     .loadingBg {
       display: none;
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.45);
-      z-index: 99999;
+      z-index: 999999;
       align-items: center;
       justify-content: center;
     }
@@ -84,10 +80,10 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="container">
-
     <h1>QR読み取り</h1>
 
     <div id="reader"></div>
@@ -99,10 +95,8 @@
     <button class="backBtn" onclick="goBack()">
       トップへ戻る
     </button>
-
   </div>
 
-  <!-- ローディング -->
   <div id="loadingBg" class="loadingBg">
     <div class="loadingBox">
       呼び出し中...
@@ -110,129 +104,127 @@
   </div>
 
   <script>
-
-    /*************************************************
-     * Apps Script URL
-     *************************************************/
     const APP_URL = "https://script.google.com/macros/s/AKfycbyiuwTyeMe3Mn4R0BXvdHZMtEODiKeYqxHOAeitTGSmxud2jLGdT7sRNSGfse_G8xqewg/exec";
 
+    let html5QrCode = null;
+    let alreadyScanned = false;
 
-    /*************************************************
-     * ローディング表示
-     *************************************************/
     function showLoading() {
       const bg = document.getElementById("loadingBg");
 
       if (bg) {
         bg.style.display = "flex";
+        bg.style.opacity = "1";
       }
     }
 
-
-    /*************************************************
-     * トップへ戻る
-     *************************************************/
     function goBack() {
       window.history.back();
     }
 
+    function extractToolId(decodedText) {
+      let toolId = decodedText;
 
-    /*************************************************
-     * QR読み取り成功
-     *************************************************/
-    ```javascript
-function onScanSuccess(decodedText) {
+      try {
+        if (decodedText.indexOf("id=") !== -1) {
+          const url = new URL(decodedText);
+          toolId = url.searchParams.get("id") || decodedText;
+        }
+      } catch (e) {
+        console.log(e);
+      }
 
-  if (!decodedText) {
-    return;
-  }
-
-  // URL形式QRなら id= を抜き出す
-  let toolId = decodedText;
-
-  try {
-
-    if (
-      decodedText.indexOf("id=") !== -1
-    ) {
-
-      const url =
-        new URL(decodedText);
-
-      toolId =
-        url.searchParams.get("id");
-
+      return toolId;
     }
 
-  } catch(e) {
-    console.log(e);
-  }
+    function moveToToolPage(toolId) {
+      const moveUrl =
+        APP_URL +
+        "?id=" + encodeURIComponent(toolId) +
+        "&t=" + new Date().getTime();
 
-  // 二重読取防止
-  html5QrCode.stop().then(function() {
+      // 表示が描画される時間を確保してから移動
+      setTimeout(function() {
+        window.location.href = moveUrl;
+      }, 600);
+    }
 
-    showLoading();
+    function onScanSuccess(decodedText) {
+      if (!decodedText || alreadyScanned) {
+        return;
+      }
 
-    const moveUrl =
-      APP_URL +
-      "?id=" + encodeURIComponent(toolId) +
-      "&t=" + new Date().getTime();
+      alreadyScanned = true;
 
-    setTimeout(function() {
-      window.location.href = moveUrl;
-    }, 150);
+      const toolId = extractToolId(decodedText);
 
-  }).catch(function(err) {
-    console.log(err);
-  });
-}
+      // 先にポップアップを表示する
+      showLoading();
 
-    /*************************************************
-     * QR読み取り開始
-     *************************************************/
-    const html5QrCode = new Html5Qrcode("reader");
+      // カメラ停止処理より先に描画を確定させる
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
 
-    Html5Qrcode.getCameras()
-      .then(function(devices) {
-
-        if (!devices || devices.length === 0) {
-          alert("カメラが見つかりません。");
-          return;
-        }
-
-        let cameraId = devices[0].id;
-
-        // 背面カメラ優先
-        devices.forEach(function(device) {
-          const label = (device.label || "").toLowerCase();
-
-          if (
-            label.includes("back") ||
-            label.includes("rear") ||
-            label.includes("背面")
-          ) {
-            cameraId = device.id;
+          if (html5QrCode) {
+            html5QrCode.stop()
+              .then(function() {
+                moveToToolPage(toolId);
+              })
+              .catch(function(err) {
+                console.log(err);
+                moveToToolPage(toolId);
+              });
+          } else {
+            moveToToolPage(toolId);
           }
+
         });
-
-        html5QrCode.start(
-          cameraId,
-          {
-            fps: 10,
-            qrbox: {
-              width: 280,
-              height: 280
-            }
-          },
-          onScanSuccess
-        );
-
-      })
-      .catch(function(err) {
-        console.log(err);
-        alert("カメラ起動に失敗しました。");
       });
+    }
 
+    function startCamera() {
+      html5QrCode = new Html5Qrcode("reader");
+
+      Html5Qrcode.getCameras()
+        .then(function(devices) {
+          if (!devices || devices.length === 0) {
+            alert("カメラが見つかりません。");
+            return;
+          }
+
+          let cameraId = devices[0].id;
+
+          devices.forEach(function(device) {
+            const label = (device.label || "").toLowerCase();
+
+            if (
+              label.includes("back") ||
+              label.includes("rear") ||
+              label.includes("背面")
+            ) {
+              cameraId = device.id;
+            }
+          });
+
+          html5QrCode.start(
+            cameraId,
+            {
+              fps: 10,
+              qrbox: {
+                width: 280,
+                height: 280
+              }
+            },
+            onScanSuccess
+          );
+        })
+        .catch(function(err) {
+          console.log(err);
+          alert("カメラ起動に失敗しました。");
+        });
+    }
+
+    window.addEventListener("load", startCamera);
   </script>
 
 </body>
