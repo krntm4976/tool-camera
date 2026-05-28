@@ -1,244 +1,218 @@
+# index.html（GitHub Pages 側 全体コード）
+
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>工具QRカメラ</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR読み取り</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 18px;
+      padding: 0;
       background: #f1f3f4;
-      font-size: 22px;
+      font-family: sans-serif;
     }
 
-    .card {
-      background: #ffffff;
-      border-radius: 22px;
+    .container {
+      width: 92%;
+      max-width: 520px;
+      margin: 24px auto;
+      background: white;
+      border-radius: 24px;
       padding: 24px;
-      max-width: 720px;
-      margin: 0 auto;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      box-sizing: border-box;
     }
 
     h1 {
-      font-size: 40px;
       text-align: center;
-      margin: 0 0 22px 0;
-      font-weight: bold;
+      font-size: 42px;
+      margin: 0 0 24px 0;
     }
 
-    #readerBox {
-      display: block;
-      background: #000;
-      border-radius: 18px;
-      overflow: hidden;
-      min-height: 280px;
-    }
-
-    #qrVideo {
+    #reader {
       width: 100%;
-      display: block;
+      overflow: hidden;
+      border-radius: 20px;
     }
 
-    #qrCanvas {
-      display: none;
+    .info {
+      margin-top: 20px;
+      font-size: 24px;
+      text-align: center;
+      color: #666;
     }
 
     .backBtn {
       width: 100%;
-      padding: 24px;
-      font-size: 30px;
-      font-weight: bold;
+      margin-top: 24px;
       border: none;
       border-radius: 18px;
-      background: #5f6368;
+      background: #6c7075;
       color: white;
-      margin-top: 24px;
+      font-size: 34px;
+      font-weight: bold;
+      padding: 24px;
     }
 
-    .msg {
+    /* ローディング */
+    .loadingBg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loadingBox {
+      background: white;
+      border-radius: 24px;
+      padding: 42px;
+      width: 80%;
+      max-width: 420px;
       text-align: center;
-      font-size: 20px;
+      font-size: 34px;
       font-weight: bold;
-      margin-top: 16px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      color: #d93025;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>工具QRカメラ</h1>
 
-    <div id="readerBox">
-      <video id="qrVideo" playsinline autoplay muted></video>
+  <div class="container">
+
+    <h1>QR読み取り</h1>
+
+    <div id="reader"></div>
+
+    <div class="info">
+      QRコードを読み取ってください
     </div>
 
-    <button class="backBtn" onclick="goHome()">
-      戻る
+    <button class="backBtn" onclick="goBack()">
+      トップへ戻る
     </button>
 
-    <div id="msg" class="msg"></div>
   </div>
 
-  <canvas id="qrCanvas"></canvas>
+  <!-- ローディング -->
+  <div id="loadingBg" class="loadingBg">
+    <div class="loadingBox">
+      呼び出し中...
+    </div>
+  </div>
 
   <script>
-    let appUrl = "";
-    let site = "";
-    let person = "";
 
-    let stream = null;
-    let scanning = false;
-    let locked = false;
+    /*************************************************
+     * Apps Script URL
+     *************************************************/
+    const APP_URL = "https://script.google.com/macros/s/AKfycbyiuwTyeMe3Mn4R0BXvdHZMtEODiKeYqxHOAeitTGSmxud2jLGdT7sRNSGfse_G8xqewg/exec";
 
-    window.addEventListener("load", function() {
-      const params = new URLSearchParams(location.search);
 
-      appUrl = params.get("app") || "";
-      site = params.get("site") || "";
-      person = params.get("person") || "";
+    /*************************************************
+     * ローディング表示
+     *************************************************/
+    function showLoading() {
+      const bg = document.getElementById("loadingBg");
 
-      if (!appUrl) {
-        document.getElementById("msg").innerText =
-          "Apps ScriptのURLが渡されていません。\n工具管理トップページから開き直してください。";
-        return;
-      }
-
-      startCamera();
-    });
-
-    async function startCamera() {
-      const msg = document.getElementById("msg");
-      const video = document.getElementById("qrVideo");
-
-      msg.innerText = "";
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" }
-          },
-          audio: false
-        });
-
-        video.srcObject = stream;
-        video.setAttribute("playsinline", true);
-
-        await video.play();
-
-        scanning = true;
-        locked = false;
-
-        requestAnimationFrame(scanFrame);
-
-      } catch (error) {
-        msg.innerText =
-          "カメラを起動できませんでした。\nChromeで開き、カメラ権限を許可してください。";
+      if (bg) {
+        bg.style.display = "flex";
       }
     }
 
-    function scanFrame() {
-      if (!scanning || locked) return;
 
-      const video = document.getElementById("qrVideo");
-      const canvas = document.getElementById("qrCanvas");
-      const ctx = canvas.getContext("2d");
+    /*************************************************
+     * トップへ戻る
+     *************************************************/
+    function goBack() {
+      window.history.back();
+    }
 
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
 
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    /*************************************************
+     * QR読み取り成功
+     *************************************************/
+    function onScanSuccess(decodedText) {
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (!decodedText) {
+        return;
+      }
 
-        const code = jsQR(
-          imageData.data,
-          imageData.width,
-          imageData.height
-        );
+      // 二重読取防止
+      html5QrCode.stop().then(function() {
 
-        if (code && code.data) {
-          locked = true;
+        showLoading();
 
-          const itemId = extractItemId(code.data);
+        const moveUrl =
+          APP_URL +
+          "?id=" + encodeURIComponent(decodedText) +
+          "&t=" + new Date().getTime();
 
-          if (!itemId) {
-            alert("管理番号を読み取れませんでした。");
-            locked = false;
-            requestAnimationFrame(scanFrame);
-            return;
-          }
+        setTimeout(function() {
+          window.location.href = moveUrl;
+        }, 150);
 
-          stopCamera();
-          goToolPage(itemId);
+      }).catch(function(err) {
+        console.log(err);
+      });
+    }
+
+
+    /*************************************************
+     * QR読み取り開始
+     *************************************************/
+    const html5QrCode = new Html5Qrcode("reader");
+
+    Html5Qrcode.getCameras()
+      .then(function(devices) {
+
+        if (!devices || devices.length === 0) {
+          alert("カメラが見つかりません。");
           return;
         }
-      }
 
-      requestAnimationFrame(scanFrame);
-    }
+        let cameraId = devices[0].id;
 
-    function stopCamera() {
-      scanning = false;
+        // 背面カメラ優先
+        devices.forEach(function(device) {
+          const label = (device.label || "").toLowerCase();
 
-      if (stream) {
-        stream.getTracks().forEach(function(track) {
-          track.stop();
+          if (
+            label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("背面")
+          ) {
+            cameraId = device.id;
+          }
         });
-        stream = null;
-      }
-    }
 
-    function extractItemId(text) {
-      if (!text) return "";
+        html5QrCode.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: {
+              width: 280,
+              height: 280
+            }
+          },
+          onScanSuccess
+        );
 
-      try {
-        const url = new URL(text);
-        const id = url.searchParams.get("id");
-        if (id) return id;
-      } catch (e) {
-        // URLでない場合はそのまま管理番号扱い
-      }
+      })
+      .catch(function(err) {
+        console.log(err);
+        alert("カメラ起動に失敗しました。");
+      });
 
-      return String(text).trim();
-    }
-
-    function goToolPage(itemId) {
-      const url =
-        appUrl +
-        "?id=" + encodeURIComponent(itemId) +
-        "&site=" + encodeURIComponent(site) +
-        "&person=" + encodeURIComponent(person);
-
-      location.href = url;
-    }
-
-    function goHome() {
-      stopCamera();
-
-      if (!appUrl) {
-        history.back();
-        return;
-      }
-
-      const url =
-        appUrl +
-        "?mode=home" +
-        "&person=" + encodeURIComponent(person) +
-        "&site=" + encodeURIComponent(site) +
-        "&t=" + new Date().getTime();
-
-      location.href = url;
-    }
   </script>
+
 </body>
 </html>
