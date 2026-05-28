@@ -109,6 +109,10 @@
     let html5QrCode = null;
     let alreadyScanned = false;
 
+    const pageParams = new URLSearchParams(window.location.search);
+    const DEFAULT_PERSON = pageParams.get("person") || "";
+    const DEFAULT_SITE = pageParams.get("site") || "";
+
     function showLoading() {
       const bg = document.getElementById("loadingBg");
 
@@ -141,9 +145,10 @@
       const moveUrl =
         APP_URL +
         "?id=" + encodeURIComponent(toolId) +
+        "&person=" + encodeURIComponent(DEFAULT_PERSON) +
+        "&site=" + encodeURIComponent(DEFAULT_SITE) +
         "&t=" + new Date().getTime();
 
-      // 表示が描画される時間を確保してから移動
       setTimeout(function() {
         window.location.href = moveUrl;
       }, 600);
@@ -158,13 +163,10 @@
 
       const toolId = extractToolId(decodedText);
 
-      // 先にポップアップを表示する
       showLoading();
 
-      // カメラ停止処理より先に描画を確定させる
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-
           if (html5QrCode) {
             html5QrCode.stop()
               .then(function() {
@@ -177,7 +179,6 @@
           } else {
             moveToToolPage(toolId);
           }
-
         });
       });
     }
