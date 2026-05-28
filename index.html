@@ -140,9 +140,52 @@
     /*************************************************
      * QR読み取り成功
      *************************************************/
-    function onScanSuccess(decodedText) { if (!decodedText) { return; } // URL形式QRなら id= を抜き出す let toolId = decodedText; try { if ( decodedText.indexOf("id=") !== -1 ) { const url = new URL(decodedText); toolId = url.searchParams.get("id"); } } catch(e) { console.log(e); } // 二重読取防止 html5QrCode.stop().then(function() { showLoading(); const moveUrl = APP_URL + "?id=" + encodeURIComponent(toolId) + "&t=" + new Date().getTime(); setTimeout(function() { window.location.href = moveUrl; }, 150); }).catch(function(err) { console.log(err); }); }
+    ```javascript
+function onScanSuccess(decodedText) {
+
+  if (!decodedText) {
+    return;
+  }
+
+  // URL形式QRなら id= を抜き出す
+  let toolId = decodedText;
+
+  try {
+
+    if (
+      decodedText.indexOf("id=") !== -1
+    ) {
+
+      const url =
+        new URL(decodedText);
+
+      toolId =
+        url.searchParams.get("id");
+
     }
 
+  } catch(e) {
+    console.log(e);
+  }
+
+  // 二重読取防止
+  html5QrCode.stop().then(function() {
+
+    showLoading();
+
+    const moveUrl =
+      APP_URL +
+      "?id=" + encodeURIComponent(toolId) +
+      "&t=" + new Date().getTime();
+
+    setTimeout(function() {
+      window.location.href = moveUrl;
+    }, 150);
+
+  }).catch(function(err) {
+    console.log(err);
+  });
+}
 
     /*************************************************
      * QR読み取り開始
