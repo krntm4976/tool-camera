@@ -39,6 +39,20 @@
       border-radius: 20px;
     }
 
+    #reader__dashboard_section,
+    #reader__dashboard_section_csr,
+    #reader__dashboard_section_fsr,
+    #reader__dashboard_section_swaplink,
+    #reader__camera_selection,
+    #reader__status_span {
+      display: none !important;
+    }
+
+    #reader span,
+    #reader p {
+      display: none !important;
+    }
+
     .info {
       margin-top: 20px;
       font-size: 24px;
@@ -157,7 +171,6 @@
     }
 
     function onScanSuccess(decodedText) {
-
       if (!decodedText || alreadyScanned) {
         return;
       }
@@ -169,7 +182,6 @@
       showLoading();
 
       if (html5QrCode) {
-
         html5QrCode.stop()
           .then(function() {
             moveToToolPage(toolId);
@@ -177,18 +189,43 @@
           .catch(function() {
             moveToToolPage(toolId);
           });
-
       } else {
         moveToToolPage(toolId);
       }
     }
 
-    function startCamera() {
+    function hideQrLibraryExtraText() {
+      const reader =
+        document.getElementById("reader");
 
+      if (!reader) {
+        return;
+      }
+
+      const elements =
+        reader.querySelectorAll("div, span, p");
+
+      elements.forEach(function(el) {
+        const text =
+          String(el.innerText || "").trim();
+
+        if (
+          text === "..." ||
+          text === "・・・" ||
+          text === "、、、" ||
+          text === ",,," ||
+          text === "Scanning" ||
+          text === "Camera based scan"
+        ) {
+          el.style.display = "none";
+        }
+      });
+    }
+
+    function startCamera() {
       html5QrCode = new Html5Qrcode("reader");
 
       const config = {
-
         fps: 15,
 
         qrbox: {
@@ -222,8 +259,12 @@
         config,
         onScanSuccess
       )
+      .then(function() {
+        setTimeout(hideQrLibraryExtraText, 300);
+        setTimeout(hideQrLibraryExtraText, 1000);
+        setTimeout(hideQrLibraryExtraText, 2000);
+      })
       .catch(function() {
-
         html5QrCode.start(
           {
             facingMode: "environment"
@@ -231,16 +272,19 @@
           config,
           onScanSuccess
         )
+        .then(function() {
+          setTimeout(hideQrLibraryExtraText, 300);
+          setTimeout(hideQrLibraryExtraText, 1000);
+          setTimeout(hideQrLibraryExtraText, 2000);
+        })
         .catch(function(err) {
           console.log(err);
           alert("カメラ起動に失敗しました。");
         });
-
       });
     }
 
     window.addEventListener("load", startCamera);
-
   </script>
 
 </body>
