@@ -34,6 +34,7 @@
 
     #reader {
       width: 100%;
+      min-height: 520px;
       overflow: hidden;
       border-radius: 20px;
     }
@@ -186,43 +187,59 @@
     function startCamera() {
       html5QrCode = new Html5Qrcode("reader");
 
-      Html5Qrcode.getCameras()
-        .then(function(devices) {
-          if (!devices || devices.length === 0) {
-            alert("カメラが見つかりません。");
-            return;
+      const config = {
+        fps: 15,
+
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+          const size =
+            Math.min(viewfinderWidth, viewfinderHeight) * 0.8;
+
+          return {
+            width: size,
+            height: size
+          };
+        },
+
+        aspectRatio: 1.0,
+
+        videoConstraints: {
+          facingMode: {
+            ideal: "environment"
+          },
+          width: {
+            ideal: 1920
+          },
+          height: {
+            ideal: 1080
+          },
+          focusMode: "continuous"
+        }
+      };
+
+      html5QrCode.start(
+        {
+          facingMode: {
+            exact: "environment"
           }
+        },
+        config,
+        onScanSuccess
+      )
+      .catch(function(err1) {
+        console.log(err1);
 
-          let cameraId = devices[0].id;
-
-          devices.forEach(function(device) {
-            const label = (device.label || "").toLowerCase();
-
-            if (
-              label.includes("back") ||
-              label.includes("rear") ||
-              label.includes("背面")
-            ) {
-              cameraId = device.id;
-            }
-          });
-
-          html5QrCode.start(
-            cameraId,
-            {
-              fps: 10,
-              qrbox: {
-                width: 280,
-                height: 280
-              }
-            },
-            onScanSuccess
-          );
-        })
-        .catch(function(err) {
-          console.log(err);
+        html5QrCode.start(
+          {
+            facingMode: "environment"
+          },
+          config,
+          onScanSuccess
+        )
+        .catch(function(err2) {
+          console.log(err2);
           alert("カメラ起動に失敗しました。");
         });
+      });
     }
 
     window.addEventListener("load", startCamera);
