@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -34,7 +35,6 @@
 
     #reader {
       width: 100%;
-      min-height: 520px;
       overflow: hidden;
       border-radius: 20px;
     }
@@ -80,6 +80,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
   </style>
+
 </head>
 
 <body>
@@ -87,15 +88,18 @@
   <div class="container">
     <h1>QR読み取り</h1>
 
-    <div id="reader"></div>
+```
+<div id="reader"></div>
 
-    <div class="info">
-      QRコードを読み取ってください
-    </div>
+<div class="info">
+  QRコードを読み取ってください
+</div>
 
-    <button class="backBtn" onclick="goBack()">
-      トップへ戻る
-    </button>
+<button class="backBtn" onclick="goBack()">
+  トップへ戻る
+</button>
+```
+
   </div>
 
   <div id="loadingBg" class="loadingBg">
@@ -119,7 +123,6 @@
 
       if (bg) {
         bg.style.display = "flex";
-        bg.style.opacity = "1";
       }
     }
 
@@ -135,9 +138,7 @@
           const url = new URL(decodedText);
           toolId = url.searchParams.get("id") || decodedText;
         }
-      } catch (e) {
-        console.log(e);
-      }
+      } catch (e) {}
 
       return toolId;
     }
@@ -152,10 +153,11 @@
 
       setTimeout(function() {
         window.location.href = moveUrl;
-      }, 600);
+      }, 500);
     }
 
     function onScanSuccess(decodedText) {
+
       if (!decodedText || alreadyScanned) {
         return;
       }
@@ -166,53 +168,48 @@
 
       showLoading();
 
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          if (html5QrCode) {
-            html5QrCode.stop()
-              .then(function() {
-                moveToToolPage(toolId);
-              })
-              .catch(function(err) {
-                console.log(err);
-                moveToToolPage(toolId);
-              });
-          } else {
+      if (html5QrCode) {
+
+        html5QrCode.stop()
+          .then(function() {
             moveToToolPage(toolId);
-          }
-        });
-      });
+          })
+          .catch(function() {
+            moveToToolPage(toolId);
+          });
+
+      } else {
+        moveToToolPage(toolId);
+      }
     }
 
     function startCamera() {
+
       html5QrCode = new Html5Qrcode("reader");
 
       const config = {
+
         fps: 15,
 
-        qrbox: function(viewfinderWidth, viewfinderHeight) {
-          const size =
-            Math.min(viewfinderWidth, viewfinderHeight) * 0.8;
-
-          return {
-            width: size,
-            height: size
-          };
+        qrbox: {
+          width: 300,
+          height: 300
         },
 
-        aspectRatio: 1.0,
+        aspectRatio: 1.333,
 
         videoConstraints: {
           facingMode: {
             ideal: "environment"
           },
+
           width: {
             ideal: 1920
           },
+
           height: {
             ideal: 1080
-          },
-          focusMode: "continuous"
+          }
         }
       };
 
@@ -225,8 +222,7 @@
         config,
         onScanSuccess
       )
-      .catch(function(err1) {
-        console.log(err1);
+      .catch(function() {
 
         html5QrCode.start(
           {
@@ -235,14 +231,16 @@
           config,
           onScanSuccess
         )
-        .catch(function(err2) {
-          console.log(err2);
+        .catch(function(err) {
+          console.log(err);
           alert("カメラ起動に失敗しました。");
         });
+
       });
     }
 
     window.addEventListener("load", startCamera);
+
   </script>
 
 </body>
